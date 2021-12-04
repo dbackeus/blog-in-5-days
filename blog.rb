@@ -44,10 +44,12 @@ def respond(socket, body: "", status: 200)
     "\r\n" \
   )
   socket.print body
+  socket.flush
 end
 
 loop do
   socket = server.accept
+  socket.sync = false
   fork do
     loop do
       request = extract_request(socket)
