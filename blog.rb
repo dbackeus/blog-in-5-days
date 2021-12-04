@@ -1,14 +1,6 @@
 require 'socket'
 server = TCPServer.new 3000
 
-def respond(socket, body: "", status: 200)
-  socket.print "HTTP/1.1 #{status}\r\n"
-  socket.print "Content-Type: text/html\r\n"
-  socket.print "Content-Length: #{body.bytesize}\r\n"
-  socket.print "\r\n"
-  socket.print body
-end
-
 STATIC_VIEWS = Dir.glob("app/views/*").each_with_object({}) do |path, hash|
   hash[File.basename(path)] = File.read(path)
 end
@@ -34,6 +26,16 @@ def extract_request(socket)
     rest << line
   end
   [method, path, rest]
+end
+
+def respond(socket, body: "", status: 200)
+  socket.print(
+    "HTTP/1.1 #{status}\r\n" \
+    "Content-Type: text/html\r\n" \
+    "Content-Length: #{body.bytesize}\r\n" \
+    "\r\n" \
+    "#{body}"
+  )
 end
 
 loop do
