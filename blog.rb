@@ -36,19 +36,21 @@ def extract_request(socket)
   [method, path, rest]
 end
 
+loop do
+  socket = server.accept
+  fork do
+    loop do
+      request = extract_request(socket)
+      break unless request
 
-while socket = server.accept
-  loop do
-    request = extract_request(socket)
-    break unless request
+      method, path, rest = request
 
-    method, path, rest = request
+      _regex, lambda = routes[method]&.find { |regex, _lambda| path[regex] }
 
-    _regex, lambda = routes[method]&.find { |regex, _lambda| path[regex] }
+      status, body = lambda ? lambda.call : [404, STATIC_VIEWS.fetch("404.html")]
 
-    status, body = lambda ? lambda.call : [404, STATIC_VIEWS.fetch("404.html")]
-
-    respond(socket, status: status, body: body)
+      respond(socket, status: status, body: body)
+    end
+    socket.close
   end
-  socket.close
 end
