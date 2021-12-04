@@ -53,6 +53,8 @@ loop do
 
       respond(socket, status: status, body: body)
     end
+  rescue Errno::ECONNRESET
+  ensure
     socket.close
   end
 end
