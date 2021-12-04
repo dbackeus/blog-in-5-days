@@ -42,8 +42,8 @@ def respond(socket, body: "", status: 200)
     "Content-Encoding: deflate\r\n" \
     "Content-Length: #{body.bytesize}\r\n" \
     "\r\n" \
-    "#{body}"
   )
+  socket.print body
 end
 
 loop do
