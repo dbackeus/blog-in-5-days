@@ -9,6 +9,9 @@ routes = {
   "GET" => {
     %r{/$} => lambda do
       [200, STATIC_VIEWS.fetch("index.html")]
+    %r{/large/?$} => lambda do
+      [200, STATIC_VIEWS.fetch("large.html")]
+    end,
     end,
     %r{/posts/?$} => lambda do
       [200, STATIC_VIEWS.fetch("posts.html")]
