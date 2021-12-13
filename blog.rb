@@ -1,6 +1,8 @@
 require 'socket'
 require "zlib"
 
+require_relative "forked_web_server"
+
 STATIC_VIEWS = Dir.glob("app/views/*").each_with_object({}) do |path, hash|
   view = File.read(path)
   hash[File.basename(path)] = view
@@ -62,29 +64,20 @@ def respond(socket, body: "", status: 200)
 end
 
 puts "Starting server on port 3000"
-server = TCPServer.new 3000
 
-worker_pids = 10.times.map do
-  fork do
-    loop do
-      socket = server.accept
-      socket.sync = false
-      loop do
-        request = extract_request(socket)
-        break unless request
+server = ForkedWebServer.new
+server.start(number_of_workers: 8) do |socket|
+  loop do
+    request = extract_request(socket)
+    break unless request
 
-        method, path, headers, body = request
+    method, path, headers, body = request
 
-        _regex, lambda = routes[method]&.find { |regex, _lambda| path[regex] }
+    _regex, lambda = routes[method]&.find { |regex, _lambda| path[regex] }
 
-        status, body = lambda ? lambda.call(body) : [404, STATIC_VIEWS.fetch("404.html.deflated")]
+    status, body = lambda ? lambda.call(body) : [404, STATIC_VIEWS.fetch("404.html.deflated")]
 
-        respond(socket, status: status, body: body)
-      end
-    rescue Errno::ECONNRESET, Interrupt
-    ensure
-      socket&.close
-    end
+    respond(socket, status: status, body: body)
   end
 end
 
@@ -97,8 +90,7 @@ Signal.trap("INT") { shutdown = true }
 loop do
   if shutdown
     puts "Shutting down"
-    worker_pids.each { |pid| Process.kill("TERM", pid) }
-    worker_pids.each { |pid| Process.wait(pid) }
+    server.shutdown
     exit
   end
   sleep 1
