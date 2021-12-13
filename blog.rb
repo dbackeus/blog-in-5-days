@@ -50,6 +50,13 @@ routes = {
     %r{/large/?$} => lambda do |request|
       [200, STATIC_VIEWS.fetch("large.html.deflated")]
     end,
+    %r{/posts/(?<id>\d+)/?$} => lambda do |request|
+      body = <<~HTML
+        <h1>Post #{request.route_match[:id]}</h1>
+        Placeholder body
+      HTML
+      [200, Zlib::Deflate.deflate(body)]
+    end,
     %r{/posts/?$} => lambda do |request|
       [200, STATIC_VIEWS.fetch("posts.html.deflated")]
     end,
@@ -60,17 +67,22 @@ routes = {
   "POST" => {
     %r{/posts/?$} => lambda do |request|
       puts request.body
-      [404, STATIC_VIEWS.fetch("404.html.deflated")]
+      [301, "", { "Location" => "/posts/1337"} ]
     end,
   }
 }
 
-def respond(socket, body: "", status: 200)
+def respond(socket, body: "", headers: nil, status: 200)
+  headers_string = headers&.each_with_object("") do |(key, value), string|
+    string << "#{key}: #{value}\r\n"
+  end
+
   socket.print(
     "HTTP/1.1 #{status}\r\n" \
     "Content-Type: text/html\r\n" \
     "Content-Encoding: deflate\r\n" \
     "Content-Length: #{body.bytesize}\r\n" \
+    "#{headers_string}" \
     "\r\n" \
   )
   socket.print body
@@ -85,12 +97,15 @@ server.start(number_of_workers: 8) do |socket|
     request = Request.from_socket(socket)
     break unless request
 
-    _regex, lambda = routes[request.method]&.find { |regex, _lambda| request.path[regex] }
+    _regex, lambda = routes[request.method]&.find do |regex, _lambda|
+      next unless match = regex.match(request.path)
 
-    status, body = lambda&.call(request) || [404, STATIC_VIEWS.fetch("404.html.deflated")]
+      request.route_match = match
+    end
 
+    status, body, headers = lambda&.call(request) || [404, STATIC_VIEWS.fetch("404.html.deflated")]
 
-    respond(socket, status: status, body: body)
+    respond(socket, status: status, body: body, headers: headers)
   end
 end
 
