@@ -1,8 +1,10 @@
 require 'socket'
 require "zlib"
+require "uri"
 
 require_relative "forked_web_server"
 require_relative "threaded_web_server"
+require_relative "app/models/post"
 
 class Request
   CARRIAGE_RETURN = "\r\n"
@@ -51,9 +53,10 @@ routes = {
       [200, STATIC_VIEWS.fetch("large.html.deflated")]
     end,
     %r{/posts/(?<id>\d+)/?$} => lambda do |request|
+      post = Post.find_by_id(request.route_match[:id])
       body = <<~HTML
-        <h1>Post #{request.route_match[:id]}</h1>
-        Placeholder body
+        <h1>#{post.title}</h1>
+        #{post.body}
       HTML
       [200, Zlib::Deflate.deflate(body)]
     end,
@@ -66,8 +69,9 @@ routes = {
   },
   "POST" => {
     %r{/posts/?$} => lambda do |request|
-      puts request.body
-      [301, "", { "Location" => "/posts/1337"} ]
+      params = URI.decode_www_form(request.body).to_h
+      post = Post.create title: params["title"], body: params["body"]
+      [301, "", { "Location" => "/posts/#{post.id}" }]
     end,
   }
 }
