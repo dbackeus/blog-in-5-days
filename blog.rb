@@ -9,28 +9,44 @@ end
 
 routes = {
   "GET" => {
-    %r{/$} => lambda do
+    %r{/$} => lambda do |body|
       [200, STATIC_VIEWS.fetch("index.html.deflated")]
     end,
-    %r{/large/?$} => lambda do
+    %r{/large/?$} => lambda do |body|
       [200, STATIC_VIEWS.fetch("large.html.deflated")]
     end,
-    %r{/posts/?$} => lambda do
+    %r{/posts/?$} => lambda do |body|
       [200, STATIC_VIEWS.fetch("posts.html.deflated")]
+    end,
+    %r{/posts/new$} => lambda do |body|
+      [200, STATIC_VIEWS.fetch("posts_new.html.deflated")]
+    end,
+  },
+  "POST" => {
+    %r{/posts/?$} => lambda do |body|
+      puts body
+      [404, STATIC_VIEWS.fetch("404.html.deflated")]
     end,
   }
 }
+
+CARRIAGE_RETURN = "\r\n"
 
 def extract_request(socket)
   first_line = socket.gets
   return unless first_line # client is done requesting over the keep alive connection
 
   method, path, http_version = first_line.split(" ")
-  rest = ""
-  while (line = socket.gets) && (line != "\r\n")
-    rest << line
+  content_length = nil
+  headers = {}
+  while (line = socket.gets) && (line != CARRIAGE_RETURN)
+    key, value = line.split(":")
+    headers[key.strip.downcase] = value.strip
   end
-  [method, path, rest]
+  if content_length = headers["content-length"]
+    body = socket.readpartial(content_length.to_i)
+  end
+  [method, path, headers, body]
 end
 
 def respond(socket, body: "", status: 200)
@@ -57,11 +73,11 @@ worker_pids = 10.times.map do
         request = extract_request(socket)
         break unless request
 
-        method, path, rest = request
+        method, path, headers, body = request
 
         _regex, lambda = routes[method]&.find { |regex, _lambda| path[regex] }
 
-        status, body = lambda ? lambda.call : [404, STATIC_VIEWS.fetch("404.html.deflated")]
+        status, body = lambda ? lambda.call(body) : [404, STATIC_VIEWS.fetch("404.html.deflated")]
 
         respond(socket, status: status, body: body)
       end
