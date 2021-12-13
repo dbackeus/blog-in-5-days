@@ -2,6 +2,7 @@ require 'socket'
 require "zlib"
 
 require_relative "forked_web_server"
+require_relative "threaded_web_server"
 
 STATIC_VIEWS = Dir.glob("app/views/*").each_with_object({}) do |path, hash|
   view = File.read(path)
@@ -65,7 +66,7 @@ end
 
 puts "Starting server on port 3000"
 
-server = ForkedWebServer.new
+server = ThreadedWebServer.new
 server.start(number_of_workers: 8) do |socket|
   loop do
     request = extract_request(socket)
