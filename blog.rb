@@ -57,11 +57,29 @@ routes = {
       body = <<~HTML
         <h1>#{post.title}</h1>
         #{post.body}
+        <p>
+          <a href="/posts">Back to posts</a>
+        </p>
       HTML
       [200, Zlib::Deflate.deflate(body)]
     end,
     %r{^/posts/?$} => lambda do |request|
-      [200, STATIC_VIEWS.fetch("posts.html.deflated")]
+      posts = Post.all
+      list_items = posts.map do |post|
+        <<~HTML
+          <li><a href="/posts/#{post.id}">#{post.title}</a></li>
+        HTML
+      end
+      body = <<~HTML
+        <h1>Posts</h1>
+        <ul>
+          #{list_items.join}
+        </ul>
+        <p>
+          <a href="/posts/new">New Post</a>
+        </p>
+      HTML
+      [200, Zlib::Deflate.deflate(body)]
     end,
     %r{^/posts/new$} => lambda do |request|
       [200, STATIC_VIEWS.fetch("posts_new.html.deflated")]

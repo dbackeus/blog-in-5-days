@@ -6,6 +6,10 @@ class Post
     POSTS_BY_ID[post.id] = post
   end
 
+  def self.all
+    POSTS_BY_ID.values
+  end
+
   def self.find_by_id(id)
     POSTS_BY_ID[id.to_i]
   end
