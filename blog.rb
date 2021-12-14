@@ -46,13 +46,13 @@ end
 
 routes = {
   "GET" => {
-    %r{/$} => lambda do |request|
+    %r{^/$} => lambda do |request|
       [200, STATIC_VIEWS.fetch("index.html.deflated")]
     end,
-    %r{/large/?$} => lambda do |request|
+    %r{^/large/?$} => lambda do |request|
       [200, STATIC_VIEWS.fetch("large.html.deflated")]
     end,
-    %r{/posts/(?<id>\d+)/?$} => lambda do |request|
+    %r{^/posts/(?<id>\d+)/?$} => lambda do |request|
       post = Post.find_by_id(request.route_match[:id])
       body = <<~HTML
         <h1>#{post.title}</h1>
@@ -60,15 +60,15 @@ routes = {
       HTML
       [200, Zlib::Deflate.deflate(body)]
     end,
-    %r{/posts/?$} => lambda do |request|
+    %r{^/posts/?$} => lambda do |request|
       [200, STATIC_VIEWS.fetch("posts.html.deflated")]
     end,
-    %r{/posts/new$} => lambda do |request|
+    %r{^/posts/new$} => lambda do |request|
       [200, STATIC_VIEWS.fetch("posts_new.html.deflated")]
     end,
   },
   "POST" => {
-    %r{/posts/?$} => lambda do |request|
+    %r{^/posts/?$} => lambda do |request|
       params = URI.decode_www_form(request.body).to_h
       post = Post.create title: params["title"], body: params["body"]
       [301, "", { "Location" => "/posts/#{post.id}" }]
