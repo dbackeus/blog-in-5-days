@@ -1,8 +1,36 @@
+require "pstore"
+
 class Post
-  POSTS_BY_ID = {}
+  def self.store
+    @store ||= PStore.new("db/test.store", false)
+  end
+
+  start = Process.clock_gettime(Process::CLOCK_MONOTONIC)
+  POSTS_BY_ID = store.transaction(true) { store["posts"] } || {}
+  finnish = Process.clock_gettime(Process::CLOCK_MONOTONIC) - start
+  puts "loaded database in #{finnish}"
+
+  Thread.new do
+    loop do
+      sleep 10
+      start = Process.clock_gettime(Process::CLOCK_MONOTONIC)
+      store.transaction do
+        store["posts"] = POSTS_BY_ID
+      end
+      finnish = Process.clock_gettime(Process::CLOCK_MONOTONIC) - start
+      puts "synced database in #{finnish}"
+    end
+  end
 
   def self.create(title:, body:)
-    post = Post.new(id: POSTS_BY_ID.length + 1, title: title, body: body)
+    time = Time.now
+    post = Post.new(
+      id: POSTS_BY_ID.length + 1,
+      title: title,
+      body: body,
+      created_at: time,
+      updated_at: time,
+    )
     POSTS_BY_ID[post.id] = post
   end
 
@@ -14,11 +42,13 @@ class Post
     POSTS_BY_ID[id.to_i]
   end
 
-  attr_reader :id, :title, :body
+  attr_reader :id, :title, :body, :created_at, :updated_at
 
-  def initialize(id:, title:, body:)
+  def initialize(id:, title:, body:, created_at: nil, updated_at: nil)
     @id = id
     @title = title
     @body = body
+    @created_at = created_at
+    @updated_at = updated_at
   end
 end
