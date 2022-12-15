@@ -2,6 +2,7 @@ require 'socket'
 require "zlib"
 require "uri"
 
+require_relative "lib/store_adapters/p_store_adapter"
 require_relative "forked_web_server"
 require_relative "threaded_web_server"
 require_relative "app/models/post"

@@ -2,11 +2,11 @@ require "pstore"
 
 class Post
   def self.store
-    @store ||= PStore.new("db/test.store", false)
+    @store ||= PStoreAdapter.new
   end
 
   start = Process.clock_gettime(Process::CLOCK_MONOTONIC)
-  POSTS_BY_ID = store.transaction(true) { store["posts"] } || {}
+  POSTS_BY_ID = store.read || {}
   finnish = Process.clock_gettime(Process::CLOCK_MONOTONIC) - start
   puts "loaded database in #{finnish}"
 
@@ -14,9 +14,7 @@ class Post
     loop do
       sleep 10
       start = Process.clock_gettime(Process::CLOCK_MONOTONIC)
-      store.transaction do
-        store["posts"] = POSTS_BY_ID
-      end
+      store.write(POSTS_BY_ID)
       finnish = Process.clock_gettime(Process::CLOCK_MONOTONIC) - start
       puts "synced database in #{finnish}"
     end
